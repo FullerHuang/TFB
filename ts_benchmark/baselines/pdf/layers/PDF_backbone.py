@@ -81,18 +81,18 @@ class PDF_backbone(nn.Module):
             [
                 nn.ModuleList(
                     [
-                        (
+                        (       # 第一次填充（周期对齐：确保序列总长度是周期 p 的整数倍，从而能完整地折叠成二维矩阵。）
                             nn.ConstantPad1d((0, p - context_window % p), 0)
                             if context_window % p != 0
                             else nn.Identity()
                         ),
-                        (
+                        (       # 第二次填充（卷积对齐：确保周期长度 p 是卷积核列大小的整数倍，使卷积操作能均匀覆盖所有列。）
                             nn.ConstantPad1d((0, k[1] - p % k[1]), 0)
                             if p % k[1] != 0
                             else nn.Identity()
                         ),
                     ]
-                )
+                )       # <-- 循环体: 对于每个周期 p 和对应的卷积参数 (k, s)，创建一个包含两层填充的 ModuleList  (列表推导式:效率高，代码简洁)
                 for p, (k, s) in zip(
                     self.period_list, zip(self.kernel_list, self.stride_list)
                 )
@@ -189,11 +189,14 @@ class PDF_backbone(nn.Module):
         res = []
         if self.wo_conv:
             for i, period in enumerate(self.period_list):
-                glo = self.pad_layer[i][0](z).reshape(
-                    z.shape[0] * z.shape[1], -1, period
+                glo = self.pad_layer[i][0](z).reshape(      # 第一次填充（周期对齐 padding）后，1D -> 2D，
+                    z.shape[0] * z.shape[1], -1, period     # -> [batch_size * n_vars, num_periods, period_len]
                 )
-                glo = self.pad_layer[i][1](glo)
-                glo = self.embedding[i](glo.unsqueeze(-3))
+                glo = self.pad_layer[i][1](glo)             # 进一步 padding 以适应卷积
+                glo = self.embedding[i](glo.unsqueeze(-3))  # 在张量 glo 的倒数第三个维度之后插入一个新的维度
+                                                            # -> [batch_size * n_vars, 1, num_periods, period_len]
+                                                            # 【插入原因】：卷积层 nn.Conv2d 期望输入具有四个维度 [batch_size, channels, height, width]
+                                                            # 再通过 embedding[i] 卷积处理，得到新的特征表示
                 glo = rearrange(glo, "(b m) d n -> b m d n", b=z.shape[0]).contiguous()
                 glo = self.backbone[i](glo)
                 res.append(glo)
