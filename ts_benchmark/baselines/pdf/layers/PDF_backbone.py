@@ -183,7 +183,7 @@ class PDF_backbone(nn.Module):
     def forward(self, z):  # z: [bs x nvars x seq_len]
         # norm
         z = z.permute(0, 2, 1)
-        z = self.revin_layer(z, "norm")
+        z = self.revin_layer(z, "norm") # (可逆的)实例归一化 Reversible Instance Normalization
         z = z.permute(0, 2, 1)
 
         res = []
