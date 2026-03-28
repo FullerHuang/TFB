@@ -22,8 +22,8 @@ class PathformerModel(nn.Module):
         self.k = configs.k
         self.num_experts_list = configs.num_experts_list
         self.patch_size_list = configs.patch_size_list
-        self.d_model = configs.d_model
-        self.d_ff = configs.d_ff
+        self.d_model = configs.d_model  # Transformer 核心模块（如注意力机制、残差连接）中使用的特征向量维度
+        self.d_ff = configs.d_ff        # Transformer 注意力机制 后的全连接层的维度（一般是d_model的4倍）
         self.residual_connection = configs.residual_connection
         self.revin = configs.revin
         self.batch_norm = configs.batch_norm
